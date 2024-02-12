@@ -5,6 +5,7 @@ const flowUrl = 'https://prod-49.westeurope.logic.azure.com:443/workflows/8041cd
 var doctype;
 var docname;
 var file;
+var doc;
 
 
 function openPage(executionContext) {
@@ -14,7 +15,7 @@ function openPage(executionContext) {
     docname = formContext.getAttribute("arq_name").getValue();
     //var doctype = formContext.getAttribute().getValue();
     //var doctype = formContext.getAttribute().getValue();
-    id = formContext.data.entity.getId().slice(1, -1);
+    id = formContext.data.entity.getId().slice(1, -1).toString();
 
     Xrm.Device.pickFile().then(
 
@@ -31,10 +32,17 @@ function openPage(executionContext) {
             console.log(entity.documentbody);
             file = entity.documentbody;
 
-            
+
 
             console.log("navigate");
-            xmlrequest();
+
+            
+            getdoctype(function () {
+                xmlrequest();
+            }, function (error) {
+                Xrm.Utility.alertDialog("Error occurred while getting document type. Please try again");
+            });
+
 
         },
         function (error) {
@@ -59,38 +67,37 @@ function xmlrequest() {
         height: 500,
         title: "Your File is being Uploaded"
     };
-
     var appendstring = `{
         "name": "${docname}",  
-        "doctype": "${doctype}"      
+        "doctype": "${doc}",     
         "Id":"${id}"
+    }`;
 
-      }`;
-    
 
     Xrm.Navigation.navigateTo(pageInput, navigationOptions)
         .then(
-            function(){
+            function () {
                 console.log("POP UP!")
             }
-    ).catch(
-        function (error) {
-            console.log("ERROR => " + error)
-        }
-    );
+        ).catch(
+            function (error) {
+                console.log("ERROR => " + error)
+            }
+        );
 
     console.log("XML REQUEST 2");
     var req = new XMLHttpRequest();
     req.timeout = 1200000;
     req.open("POST", flowUrl, true);
     req.setRequestHeader('Content-Type', 'application/json');
+    console.log("XML REQUEST 2");
     req.onreadystatechange = function () {
         if (this.readyState === 4) {
             req.onreadystatechange = null;
             if (this.status === 200) {
 
                 console.log("before send");
-                uploadFile();
+                //uploadFile();
 
                 // entity["objectid_lead@odata.bind"] = "/leads(" + entityId + ")";
 
@@ -102,7 +109,10 @@ function xmlrequest() {
             }
         }
     };
+    console.log("XML REQUEST 2");
+
     req.send(appendstring);
+    console.log("XML REQUEST 3");
 }
 
 
@@ -157,3 +167,21 @@ async function uploadFile() {
 
 
 
+function getdoctype(successCallback, errorCallback) {
+    if (formContext.getAttribute("arq_doctype").getValue() !== null) {
+        var doctype = formContext.getAttribute("arq_doctype").getValue()[0].id.slice(1, -1);
+
+        Xrm.WebApi.retrieveRecord("arq_documenttype", doctype, "?$select=arq_documentclassification").then(
+            function success(result) {
+                doc = result.arq_documentclassification;
+                successCallback(); // Call the success callback function
+            },
+            function (error) {
+                console.log("ERROR => " + error.message);
+                errorCallback(error); // Call the error callback function
+            }
+        );
+    } else {
+        errorCallback("No document type selected");
+    }
+}
