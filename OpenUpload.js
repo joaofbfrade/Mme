@@ -1,21 +1,20 @@
-const siteUrl = "https://your-sharepoint-site-url";
+const siteUrl = "https://arquiconsult1.sharepoint.com/teams/PowerPlatformSandbox";
 const libraryName = "Documents";
-const file = "";
-const flowUrl = 'https://prod-49.westeurope.logic.azure.com:443/workflows/8041cdd51555442aa5762044f624f445/triggers/manual/paths/invoke?api-version=2016-06-01';
-
-
-
+var file = "";
+const flowUrl = 'https://prod-49.westeurope.logic.azure.com:443/workflows/8041cdd51555442aa5762044f624f445/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=dA7b8B3JAm97_Qef-3cq-NZBWMvcK5830kzt3hnP8Kk';
+var doctype;
+var docname;
+var file;
 
 
 function openPage(executionContext) {
 
-    formContext = executionContext.getFormContext();
-    
-    var doctype = formContext.getAttribute("arq_doctype").getValue();
-    var name = formContext.getAttribute("arq_name").getValue();
+    formContext = executionContext;
+    doctype = formContext.getAttribute("arq_doctype").getValue();
+    docname = formContext.getAttribute("arq_name").getValue();
     //var doctype = formContext.getAttribute().getValue();
     //var doctype = formContext.getAttribute().getValue();
-    
+    id = formContext.data.entity.getId().slice(1, -1);
 
     Xrm.Device.pickFile().then(
 
@@ -28,66 +27,14 @@ function openPage(executionContext) {
             entity.filename = data[0].fileName;
             entity.mimetype = data[0].mimeType;
             //entity.notetext = "Sample Text";
-
-            var appendstring = `{
-                "name": "${name}",            
-                "signature": "${signature}",
-                "details": '${details}',
-                "nextsteps": '${nextsteps}',
-                "owner": '${owner}',
-                "Createdon": '${CreatedOn}',
-                "customer": "${customer}",
-                "id":"${id}"
-    
-              }`;
-
             // lead entity sample
-            // entity["objectid_lead@odata.bind"] = "/leads(" + entityId + ")";
             console.log(entity.documentbody);
             file = entity.documentbody;
 
-            var pageInput = {
-                pageType: "custom",
-                name: "arq_uploadpage_b2417",
-            };
-            var navigationOptions = {
-                target: 2,
-                position: 1,
-                width: { value: 50, unit: "%" },
-                height: 500,
-                title: "Your File is being Uploaded"
-            };
-            Xrm.Navigation.navigateTo(pageInput, navigationOptions)
-                .then(
-                    function () {
-                        var req = new XMLHttpRequest();
-                        req.timeout = 1200000;
-                        req.open("POST", flowUrl, true);
-                        req.setRequestHeader('Content-Type', 'application/json');
-                        req.onreadystatechange = function () {
-                            if (this.readyState === 4) {
-                                req.onreadystatechange = null;
-                                if (this.status === 200) {
+            
 
-                                    Sendfile();
-
-
-
-
-                                }
-                                else {
-                                    formContext.ui.setFormNotification("An error occured generating your documents!", "ERROR", infoId);
-                                }
-                            }
-                        };
-                        req.send(appendstring);
-                    }
-                ).catch(
-                    function (error) {
-                        // Handle error
-                    }
-                );
-
+            console.log("navigate");
+            xmlrequest();
 
         },
         function (error) {
@@ -98,11 +45,73 @@ function openPage(executionContext) {
 
 
 
+function xmlrequest() {
+    console.log("XML REQUEST");
 
+    var pageInput = {
+        pageType: "custom",
+        name: "arq_uploadpage_b2417",
+    };
+    var navigationOptions = {
+        target: 2,
+        position: 1,
+        width: { value: 50, unit: "%" },
+        height: 500,
+        title: "Your File is being Uploaded"
+    };
+
+    var appendstring = `{
+        "name": "${docname}",  
+        "doctype": "${doctype}"      
+        "Id":"${id}"
+
+      }`;
+    
+
+    Xrm.Navigation.navigateTo(pageInput, navigationOptions)
+        .then(
+            function(){
+                console.log("POP UP!")
+            }
+    ).catch(
+        function (error) {
+            console.log("ERROR => " + error)
+        }
+    );
+
+    console.log("XML REQUEST 2");
+    var req = new XMLHttpRequest();
+    req.timeout = 1200000;
+    req.open("POST", flowUrl, true);
+    req.setRequestHeader('Content-Type', 'application/json');
+    req.onreadystatechange = function () {
+        if (this.readyState === 4) {
+            req.onreadystatechange = null;
+            if (this.status === 200) {
+
+                console.log("before send");
+                uploadFile();
+
+                // entity["objectid_lead@odata.bind"] = "/leads(" + entityId + ")";
+
+
+
+            }
+            else {
+                formContext.ui.setFormNotification("An error occured generating your documents!", "ERROR", infoId);
+            }
+        }
+    };
+    req.send(appendstring);
+}
 
 
 async function uploadFile() {
+
+    console.log("upload file");
     if (file) {
+
+        console.log("");
         // Convert base64-encoded file content to binary data
         const binaryData = atob(file);
         const fileByteArray = new Uint8Array(binaryData.length);
@@ -115,7 +124,7 @@ async function uploadFile() {
         const fileBlob = new Blob([fileByteArray]);
 
         // SharePoint REST API endpoint
-        const endpointUrl = `${siteUrl}/_api/web/lists/getbytitle('${libraryName}')/MaillingMe/${doctype}/add(url='your-filename.txt',overwrite=true)`;
+        const endpointUrl = `${siteUrl}/_api/web/lists/getbytitle('${libraryName}')/MaillingMe/${docname}/add`;
 
         // Get the form digest value
         const digest = await getFormDigest(siteUrl);
