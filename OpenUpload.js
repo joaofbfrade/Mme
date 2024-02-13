@@ -6,6 +6,11 @@ var doctype;
 var docname;
 var file;
 var doc;
+var id;
+var filename;
+
+
+
 
 
 function openPage(executionContext) {
@@ -31,12 +36,13 @@ function openPage(executionContext) {
             // lead entity sample
             console.log(entity.documentbody);
             file = entity.documentbody;
+            filename=entity.filename;
 
 
 
             console.log("navigate");
 
-            
+
             getdoctype(function () {
                 xmlrequest();
             }, function (error) {
@@ -60,17 +66,15 @@ function xmlrequest() {
         pageType: "custom",
         name: "arq_uploadpage_b2417",
     };
-    var navigationOptions = {
-        target: 2,
-        position: 1,
-        width: { value: 50, unit: "%" },
-        height: 500,
-        title: "Your File is being Uploaded"
-    };
+    
+    var navigationOptions = {};
+
     var appendstring = `{
         "name": "${docname}",  
         "doctype": "${doc}",     
-        "Id":"${id}"
+        "Id":"${id}",
+        "Filename":"${filename}",
+        "File":"${file}"
     }`;
 
 
@@ -97,6 +101,45 @@ function xmlrequest() {
             if (this.status === 200) {
 
                 console.log("before send");
+
+                var alertStrings = { confirmButtonLabel: "Ok", text: "Your File was uploaded!" };
+                var alertOptions = { height: 120, width: 260 };
+                Xrm.Navigation.openAlertDialog(alertStrings, alertOptions).then(
+                    function (success) {
+                        //  formContext.data.refresh(true);
+
+                        var entityFormOptions = {};
+                        entityFormOptions["entityName"] = "arq_documentlog";
+                        entityFormOptions["entityId"] = id;
+
+
+
+                        Xrm.Navigation.openForm(entityFormOptions).then(function () {
+                            setTimeout(function () {
+
+                                console.log("Log Documents2");
+                                //console.log(formContext.ui.tabs.get("Log Documents"));
+                                console.log("Log Documents3");
+                                formContext.ui.tabs.get("Log Documents").setFocus();
+                            }, 3000);
+                        }, function (error) {
+                            console.log("Error opening form: " + error.message);
+                        });
+
+
+
+
+
+
+                    },
+                    function (error) {
+                        console.log(error.message);
+                    }
+                );
+
+
+
+
                 //uploadFile();
 
                 // entity["objectid_lead@odata.bind"] = "/leads(" + entityId + ")";
@@ -116,51 +159,51 @@ function xmlrequest() {
 }
 
 
-async function uploadFile() {
+// async function uploadFile() {
 
-    console.log("upload file");
-    if (file) {
+//     console.log("upload file");
+//     if (file) {
 
-        console.log("");
-        // Convert base64-encoded file content to binary data
-        const binaryData = atob(file);
-        const fileByteArray = new Uint8Array(binaryData.length);
+//         console.log("");
+//         // Convert base64-encoded file content to binary data
+//         const binaryData = atob(file);
+//         const fileByteArray = new Uint8Array(binaryData.length);
 
-        for (let i = 0; i < binaryData.length; i++) {
-            fileByteArray[i] = binaryData.charCodeAt(i);
-        }
+//         for (let i = 0; i < binaryData.length; i++) {
+//             fileByteArray[i] = binaryData.charCodeAt(i);
+//         }
 
-        // Create a Blob from binary data
-        const fileBlob = new Blob([fileByteArray]);
+//         // Create a Blob from binary data
+//         const fileBlob = new Blob([fileByteArray]);
 
-        // SharePoint REST API endpoint
-        const endpointUrl = `${siteUrl}/_api/web/lists/getbytitle('${libraryName}')/MaillingMe/${docname}/add`;
+//         // SharePoint REST API endpoint
+//         const endpointUrl = `${siteUrl}/_api/web/lists/getbytitle('${libraryName}')/MaillingMe/${docname}/add`;
 
-        // Get the form digest value
-        const digest = await getFormDigest(siteUrl);
+//         // Get the form digest value
+//         const digest = await getFormDigest(siteUrl);
 
-        // Set headers for the request
-        const headers = new Headers({
-            Accept: "application/json;odata=verbose",
-            "X-RequestDigest": digest,
-        });
+//         // Set headers for the request
+//         const headers = new Headers({
+//             Accept: "application/json;odata=verbose",
+//             "X-RequestDigest": digest,
+//         });
 
-        // Perform the file upload
-        const uploadResult = await fetch(endpointUrl, {
-            method: "POST",
-            headers: headers,
-            body: fileBlob,
-        });
+//         // Perform the file upload
+//         const uploadResult = await fetch(endpointUrl, {
+//             method: "POST",
+//             headers: headers,
+//             body: fileBlob,
+//         });
 
-        if (uploadResult.ok) {
-            console.log("File uploaded successfully!");
-        } else {
-            console.error("Error uploading file:", uploadResult.statusText);
-        }
-    } else {
-        console.error("No file selected.");
-    }
-}
+//         if (uploadResult.ok) {
+//             console.log("File uploaded successfully!");
+//         } else {
+//             console.error("Error uploading file:", uploadResult.statusText);
+//         }
+//     } else {
+//         console.error("No file selected.");
+//     }
+// }
 
 
 
